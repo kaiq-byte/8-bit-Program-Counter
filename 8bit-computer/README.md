@@ -63,18 +63,6 @@ The project follows the classic teaching-computer layout (SAP-1 / Ben Eater styl
 - **`CounterProgram.dig`** — everything wired together: on each full cycle, the RAM value is put on the bus, loaded into a register, incremented by `1` through the ALU, and the result is written back to RAM/register — repeating indefinitely with the clock.
 - **`COMPUTADORWITHOUTSTEPPER.dig`** — same idea, but without the automatic sequencer, meant for triggering control signals manually to understand what each step does.
 
-## Fixes applied while organizing
-
-While reviewing the internal references inside the `.dig` files, some subcircuit names had `_` instead of a space (likely a side effect of upload/download). This breaks the simulation in Digital, since it looks up subcircuits by the exact name used in the XML. The following files were renamed to match their internal references:
-
-| Uploaded name          | Fixed name (used internally) |
-|------------------------|--------------------------------------|
-| `Full_adder.dig`       | `Full adder.dig`                    |
-| `Shift_Lefter.dig`     | `Shift Lefter.dig`                  |
-| `Shift_Right.dig`      | `Shift Right.dig`                   |
-| `Stepper_count.dig`    | `Stepper count.dig`                 |
-
-> `COMPUTADORWITHOUTSTEPPER.dig` references a `Ram.dig` that wasn't among the uploaded files. Since `CounterProgram.dig` (the main circuit) uses Digital's native `RAMDualPort` component instead of a custom `.dig`, it **is not affected** — but opening the no-stepper variant will require adding that file.
 
 ## Requirements
 
