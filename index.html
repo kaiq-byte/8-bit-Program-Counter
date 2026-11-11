@@ -3,532 +3,236 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Computador 8-bit Simulador</title>
+<title>Computador 8-bit no Digital</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Chakra+Petch:wght@500;600;700&display=swap">
 <style>
-/* Layout: bancada de laboratório — cabeçalho de controle, depois uma grade de módulos (barramento no centro, registradores, ALU, RAM) */
+/* Layout: janela de aplicativo de simulação — barra de ferramentas no topo, prancheta do circuito ocupando o resto */
 :root {
-  --bg: #eef0ec;          /* papel de engenharia, leve tom verde */
-  --panel: #fbfcfa;
-  --ink: #1c2420;
-  --muted: #5e6b64;
-  --line: #cdd4cf;
-  --accent: #0f7b5f;      /* verde placa de circuito */
-  --led-on: #e2402c;      /* LED vermelho */
-  --led-off: #d9ddd9;
-  --bus: #d79a12;         /* cobre do barramento */
-  --warn: #b3261e;
-  --font-display: "Chakra Petch", "IBM Plex Sans", system-ui, sans-serif;
-  --font-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --chrome: #eceef1;
+  --chrome-2: #dfe3e8;
+  --ink: #1d2128;
+  --muted: #5d6573;
+  --line: #c3c9d2;
+  --accent: #0b6bcb;
+  --canvas: #ffffff;
+  --ok: #2f9e44;
+  --err: #d6336c;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #111614; --panel: #19201d; --ink: #e4ebe7; --muted: #8e9c95; --line: #2c3632;
-    --accent: #3fc196; --led-on: #ff5a3f; --led-off: #2b3330; --bus: #f0b232; --warn: #ff7a70;
-    color-scheme: dark;
-  }
+  :root:not([data-theme="light"]) { --chrome: #23272e; --chrome-2: #2d323a; --ink: #e7eaee; --muted: #a0a8b4; --line: #3c434d; --accent: #5aa6f0; color-scheme: dark; }
 }
-:root[data-theme="dark"] {
-  --bg: #111614; --panel: #19201d; --ink: #e4ebe7; --muted: #8e9c95; --line: #2c3632;
-  --accent: #3fc196; --led-on: #ff5a3f; --led-off: #2b3330; --bus: #f0b232; --warn: #ff7a70;
-  color-scheme: dark;
-}
+:root[data-theme="dark"] { --chrome: #23272e; --chrome-2: #2d323a; --ink: #e7eaee; --muted: #a0a8b4; --line: #3c434d; --accent: #5aa6f0; color-scheme: dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { margin: 0; }
-body {
-  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 24px 48px;
+html, body { height: 100%; margin: 0; }
+body { background: var(--chrome); color: var(--ink); font: 14px/1.4 var(--font-ui); display: flex; flex-direction: column; }
+.bar {
+  display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center;
+  padding-block: 8px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--chrome);
 }
-.wrap { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-header { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; }
-h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 4vw, 38px); margin: 0; letter-spacing: .01em; text-wrap: balance; }
-h1 span { color: var(--accent); }
-.lede { margin: 4px 0 0; color: var(--muted); max-width: 64ch; }
-h2 { font-family: var(--font-display); font-size: 13px; text-transform: uppercase; letter-spacing: .12em; margin: 0; color: var(--muted); font-weight: 600; }
-a { color: var(--accent); }
-
-.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; }
-button, select, input[type=number] { font: 500 14px var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 7px 12px; }
+.bar h1 { font-size: 15px; margin: 0 6px 0 0; font-weight: 650; white-space: nowrap; }
+.group { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.sep { width: 1px; align-self: stretch; background: var(--line); }
+button, select, input { font: 500 13px var(--font-ui); color: var(--ink); background: var(--chrome-2); border: 1px solid var(--line); border-radius: 5px; padding: 6px 10px; }
 button { cursor: pointer; }
 button:hover { border-color: var(--accent); }
-button.primary { background: var(--accent); color: var(--panel); border-color: var(--accent); }
-button:focus-visible, select:focus-visible, input:focus-visible, .ramcell:focus-visible, .sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.controls label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
-.controls .sep { flex: 1; }
-.mode { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
-.mode button { border: 0; border-radius: 0; background: transparent; }
-.mode button[aria-pressed=true] { background: var(--ink); color: var(--panel); }
-
-.stepper { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.stepper .t { font: 600 12px var(--font-mono); padding: 4px 9px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
-.stepper .t.on { background: var(--led-on); border-color: var(--led-on); color: #fff; }
-.clockphase { font: 500 12px var(--font-mono); color: var(--muted); }
-
-.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
-.mod { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.mod.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
-.mod.setting { border-color: var(--led-on); box-shadow: 0 0 0 1px var(--led-on) inset; }
-.span-3 { grid-column: span 3; } .span-4 { grid-column: span 4; } .span-5 { grid-column: span 5; }
-.span-6 { grid-column: span 6; } .span-7 { grid-column: span 7; } .span-12 { grid-column: span 12; }
-@media (max-width: 980px) { .span-3, .span-4 { grid-column: span 6; } .span-5, .span-7 { grid-column: span 12; } }
-@media (max-width: 620px) { .grid > * { grid-column: span 12 !important; } }
-
-.modhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.modhead .file { font: 400 11px var(--font-mono); color: var(--muted); }
-.val { display: flex; align-items: baseline; gap: 12px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.val .dec { font-size: 26px; font-weight: 600; }
-.val .hex, .val .bin { color: var(--muted); font-size: 13px; }
-.leds { display: flex; gap: 5px; }
-.led { width: 14px; height: 14px; border-radius: 50%; background: var(--led-off); flex: none; }
-.led.on { background: var(--led-on); box-shadow: 0 0 8px var(--led-on); }
-.flags { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip { font: 500 12px var(--font-mono); padding: 2px 8px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
-.chip.on { border-color: var(--led-on); color: var(--led-on); }
-.sig { display: flex; gap: 6px; }
-.sig .chip.e.on { border-color: var(--accent); color: var(--accent); }
-
-.busmod { background: var(--panel); border: 2px solid var(--bus); }
-.busbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.busbar .wire { flex: 1; min-width: 120px; height: 6px; border-radius: 3px; background: repeating-linear-gradient(90deg, var(--bus) 0 10px, transparent 10px 14px); opacity: .5; }
-.busbar .wire.live { opacity: 1; animation: flow .6s linear infinite; background-size: 14px 6px; }
-@keyframes flow { to { background-position: 14px 0; } }
-@media (prefers-reduced-motion: reduce) { .busbar .wire.live { animation: none; } }
-.bussrc { font: 500 13px var(--font-mono); color: var(--muted); }
-.warn { color: var(--warn); font-weight: 600; font-size: 13px; }
-
-.alu-io { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font: 13px var(--font-mono); font-variant-numeric: tabular-nums; align-items: center; }
-.alu-io .k { color: var(--muted); }
-
-.ram { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 2px; font: 11px var(--font-mono); }
-.ramcell { text-align: center; padding: 3px 0; border-radius: 2px; background: var(--bg); color: var(--muted); cursor: pointer; border: 1px solid transparent; font-variant-numeric: tabular-nums; }
-.ramcell.nz { color: var(--ink); }
-.ramcell.sel { border-color: var(--led-on); color: var(--led-on); font-weight: 600; }
-.ramedit { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
-.ramedit input { width: 80px; }
-
-.switches { display: flex; gap: 5px; }
-.sw { width: 22px; height: 32px; border-radius: 3px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font: 600 11px var(--font-mono); color: var(--muted); padding: 0; }
-.sw.on { background: var(--accent); color: var(--panel); border-color: var(--accent); }
-
-.tablewrap { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 760px; }
-th, td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: middle; }
-th { font: 600 11px var(--font-display); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
-tr.cur td { background: color-mix(in srgb, var(--led-on) 12%, transparent); }
-td.step { font: 600 13px var(--font-mono); }
-td .boxes { display: flex; gap: 8px; flex-wrap: wrap; }
-td .boxes label { display: inline-flex; gap: 3px; align-items: center; font: 12px var(--font-mono); }
-td select { padding: 4px 6px; font-size: 13px; }
-td.desc { color: var(--muted); min-width: 200px; }
-.manual { display: flex; flex-direction: column; gap: 12px; }
-.manual .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
-.manual .row > span { font: 600 11px var(--font-display); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); min-width: 80px; }
-.manual label { display: inline-flex; gap: 4px; align-items: center; font: 13px var(--font-mono); }
-.note { color: var(--muted); font-size: 13px; max-width: 75ch; margin: 0; }
-.log { font: 12px var(--font-mono); color: var(--muted); max-height: 150px; overflow-y: auto; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column-reverse; gap: 2px; }
-footer { color: var(--muted); font-size: 13px; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; padding-block: 6px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); font-size: 13px; }
+.crumbs button { background: none; border: 0; padding: 2px 6px; color: var(--accent); }
+.crumbs button[aria-current] { color: var(--ink); font-weight: 650; cursor: default; }
+.crumbs span { color: var(--muted); }
+.crumbs .hint { margin-left: auto; color: var(--muted); }
+.stage { position: relative; flex: 1; min-height: 0; background: var(--canvas); }
+svg#board { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; user-select: none; background: #fff; font-family: Arial, Helvetica, sans-serif; }
+svg#board .el.sub { cursor: zoom-in; }
+svg#board .el.sub:hover polygon:first-of-type { fill: rgba(150, 200, 255, .55); }
+svg#board .el.io { cursor: pointer; }
+.status { position: absolute; left: max(10px, env(safe-area-inset-left, 0px)); bottom: max(10px, env(safe-area-inset-bottom, 0px)); background: rgba(255,255,255,.92); color: #1d2128; border: 1px solid #c3c9d2; border-radius: 5px; padding: 4px 8px; font: 12px var(--font-mono); pointer-events: none; }
+.status.err { color: #c92a2a; border-color: #c92a2a; }
+.pop { position: absolute; z-index: 5; background: var(--chrome); border: 1px solid var(--line); border-radius: 6px; padding: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 8px; max-width: calc(100% - 20px); }
+.pop h2 { font-size: 13px; margin: 0; }
+.pop .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pop input[type=number] { width: 90px; }
+.ramgrid { display: grid; grid-template-columns: auto repeat(16, minmax(0, 1fr)); gap: 2px; font: 11px var(--font-mono); max-height: 50vh; overflow: auto; }
+.ramgrid input { width: 30px; padding: 2px; font: 11px var(--font-mono); text-align: center; border-radius: 3px; }
+.ramgrid .ah { color: var(--muted); padding-right: 4px; align-self: center; }
+.ramgrid input.cur { border-color: var(--err); }
+@media (max-width: 640px) { .sep, .crumbs .hint, .bar h1 { display: none; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <h1>Computador <span>8-bit</span></h1>
-      <p class="lede">Simulador no navegador do computador SAP de 8 bits montado no Digital. O programa padrão lê um byte da RAM, soma 1 na ALU e grava de volta, em loop, a cada ciclo do stepper.</p>
-    </div>
-    <div class="mode" role="group" aria-label="Modo">
-      <button id="modeAuto" aria-pressed="true">Com stepper</button>
-      <button id="modeManual" aria-pressed="false">Sem stepper (manual)</button>
-    </div>
-  </header>
-
-  <div class="controls" id="autoControls">
-    <button class="primary" id="runBtn">▶ Rodar clock</button>
-    <button id="stepBtn">Passo (1 pulso)</button>
-    <button id="cycleBtn">Ciclo completo</button>
-    <button id="resetBtn">Reset</button>
-    <label for="speed">Velocidade <input type="range" id="speed" min="1" max="30" value="4"> <span id="speedLbl">4 Hz</span></label>
-    <span class="sep"></span>
-    <div class="stepper" id="stepper" aria-label="Stepper"></div>
-    <span class="clockphase" id="cycles">ciclos: 0</span>
+<div class="bar">
+  <h1>Computador 8-bit</h1>
+  <div class="group">
+    <label for="file">Circuito</label>
+    <select id="file"></select>
   </div>
-
-  <div class="grid">
-    <section class="mod busmod span-12" aria-label="Barramento">
-      <div class="modhead"><h2>Barramento (bus) 8 bits</h2><span class="bussrc" id="busSrc">ninguém no barramento</span></div>
-      <div class="busbar">
-        <div class="val"><span class="dec" id="busDec">0</span><span class="hex" id="busHex">0x00</span></div>
-        <div class="leds" id="busLeds"></div>
-        <div class="wire" id="busWire"></div>
-      </div>
-      <div class="warn" id="busWarn" hidden></div>
-    </section>
-
-    <div class="span-12 grid" id="regs" style="grid-column: span 12;"></div>
-
-    <section class="mod span-5" id="aluMod" aria-label="ALU">
-      <div class="modhead"><h2>ALU</h2><span class="file">ALU.dig</span></div>
-      <div class="alu-io">
-        <span class="k">A (bus)</span><span id="aluA">0</span>
-        <span class="k">B</span><span id="aluB">0</span>
-        <span class="k">OP</span><span id="aluOp">000 ADD</span>
-        <span class="k">C</span><span id="aluC">0</span>
-      </div>
-      <div class="flags" id="aluFlags"></div>
-      <p class="note">B vem do TMP, ou vale 1 quando o sinal Bus1 está ativo (Busone.dig). O resultado C só entra no ACC quando o ACC recebe o sinal S.</p>
-    </section>
-
-    <section class="mod span-7" id="ramMod" aria-label="RAM">
-      <div class="modhead"><h2>RAM 256 × 8</h2><span class="file">RAMDualPort · endereço vindo do MAR</span></div>
-      <div class="ram" id="ram"></div>
-      <div class="ramedit">
-        <label for="ramAddr">Endereço</label><input type="number" id="ramAddr" min="0" max="255" value="0">
-        <label for="ramVal">Valor</label><input type="number" id="ramVal" min="0" max="255" value="0">
-        <button id="ramWrite">Gravar</button>
-        <span>Clique numa célula para selecionar.</span>
-      </div>
-    </section>
-
-    <section class="mod span-12" id="microMod">
-      <div class="modhead"><h2>Microcódigo do stepper</h2>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <select id="preset" aria-label="Programa">
-            <option value="counter">Contador (+1 na RAM)</option>
-            <option value="double">Dobrar (SHL)</option>
-            <option value="walk">Contador + percorre RAM</option>
-            <option value="empty">Vazio</option>
-          </select>
-        </div>
-      </div>
-      <p class="note">Cada passo T1–T6 do stepper liga um sinal <b>E</b> (quem coloca o valor no barramento) e sinais <b>S</b> (quem grava o valor do barramento). Edite a tabela para criar seu próprio programa. T7 reinicia o stepper.</p>
-      <div class="tablewrap"><table id="micro"></table></div>
-    </section>
-
-    <section class="mod span-12 manual" id="manualMod" hidden>
-      <div class="modhead"><h2>Controle manual</h2><span class="file">COMPUTADORWITHOUTSTEPPER.dig</span></div>
-      <p class="note">Sem o stepper você mesmo liga os sinais. Escolha quem coloca o valor no barramento (E), quem grava (S) e aperte o pulso de clock.</p>
-      <div class="row"><span>Entrada</span><div class="switches" id="switches"></div><span class="bussrc" id="inVal">0</span></div>
-      <div class="row" id="manE"><span>Enable (E)</span></div>
-      <div class="row" id="manS"><span>Set (S)</span></div>
-      <div class="row"><span>ALU</span>
-        <label><input type="checkbox" id="manBus1"> Bus1</label>
-        <label for="manOp">OP</label><select id="manOp"></select>
-      </div>
-      <div class="row"><button class="primary" id="manPulse">Pulso de clock</button><button id="manReset">Reset</button></div>
-    </section>
-
-    <section class="mod span-12">
-      <h2>Registro</h2>
-      <ul class="log" id="log"></ul>
-    </section>
+  <span class="sep"></span>
+  <div class="group" role="group" aria-label="Clock">
+    <button id="run" class="on" title="Liga/desliga o clock automático">❚❚ Pausar</button>
+    <button id="tick" title="Inverte o clock uma vez (meio ciclo)">Pulso de clock</button>
+    <label for="speed">Freq. <input type="range" id="speed" min="1" max="40" value="4"> <span id="speedLbl">4 Hz</span></label>
   </div>
-
-  <footer>Simulação comportamental em JavaScript da arquitetura dos circuitos <code>.dig</code> deste repositório. Para a versão porta-lógica-por-porta, abra <code>8bit-computer/circuits/CounterProgram.dig</code> no <a href="https://github.com/hneemann/Digital" target="_blank" rel="noopener">Digital</a>.</footer>
+  <span class="sep"></span>
+  <div class="group">
+    <button id="reset" title="Reinicia a simulação">Reiniciar</button>
+    <button id="fit" title="Enquadrar o circuito">Enquadrar</button>
+    <button id="zin" aria-label="Aproximar">+</button>
+    <button id="zout" aria-label="Afastar">−</button>
+  </div>
+</div>
+<nav class="crumbs" id="crumbs" aria-label="Hierarquia"></nav>
+<div class="stage" id="stage">
+  <svg id="board" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Circuito"></svg>
+  <div class="status" id="status"></div>
+  <div class="pop" id="pop" hidden></div>
 </div>
 
+<script src="web/circuits.js"></script>
+<script src="web/digital.js"></script>
 <script>
 (() => {
-  const OPS = ["ADD", "SHR", "SHL", "NOT", "AND", "OR", "XOR", "CMP"];
-  const REGS = [
-    { id: "R0", file: "Register.dig" }, { id: "R1", file: "Register.dig" },
-    { id: "R2", file: "Register.dig" }, { id: "R3", file: "Register.dig" },
-    { id: "TMP", file: "Register.dig → B da ALU" }, { id: "ACC", file: "Register.dig ← saída da ALU" },
-    { id: "MAR", file: "MAR.dig → endereço da RAM" },
-  ];
-  const E_SOURCES = ["—", "RAM", "R0", "R1", "R2", "R3", "ACC", "IN"];
-  const S_TARGETS = ["R0", "R1", "R2", "R3", "TMP", "ACC", "MAR", "RAM"];
-
-  const PRESETS = {
-    counter: [
-      { e: "RAM", s: ["R0"], bus1: false, op: 0, d: "Lê RAM[MAR] e grava em R0" },
-      { e: "R0", s: ["ACC"], bus1: true, op: 0, d: "R0 + 1 (Bus1) → ACC" },
-      { e: "ACC", s: ["R0"], bus1: false, op: 0, d: "ACC → R0" },
-      { e: "R0", s: ["RAM"], bus1: false, op: 0, d: "R0 → RAM[MAR] (grava de volta)" },
-      { e: "—", s: [], bus1: false, op: 0, d: "livre" },
-      { e: "—", s: [], bus1: false, op: 0, d: "livre" },
-    ],
-    double: [
-      { e: "RAM", s: ["R0"], bus1: false, op: 0, d: "Lê RAM[MAR] e grava em R0" },
-      { e: "R0", s: ["ACC"], bus1: false, op: 2, d: "R0 << 1 (SHL) → ACC" },
-      { e: "ACC", s: ["R0", "RAM"], bus1: false, op: 0, d: "ACC → R0 e RAM[MAR]" },
-      { e: "—", s: [], bus1: false, op: 0, d: "livre" },
-      { e: "—", s: [], bus1: false, op: 0, d: "livre" },
-      { e: "—", s: [], bus1: false, op: 0, d: "livre" },
-    ],
-    walk: [
-      { e: "R1", s: ["ACC"], bus1: true, op: 0, d: "R1 + 1 → ACC (próximo valor)" },
-      { e: "ACC", s: ["R1", "RAM"], bus1: false, op: 0, d: "ACC → R1 e RAM[MAR]" },
-      { e: "—", s: [], bus1: false, op: 0, d: "livre" },
-      { e: "R2", s: ["ACC"], bus1: true, op: 0, d: "R2 + 1 → ACC (próximo endereço)" },
-      { e: "ACC", s: ["R2", "MAR"], bus1: false, op: 0, d: "ACC → R2 e MAR" },
-      { e: "—", s: [], bus1: false, op: 0, d: "livre" },
-    ],
-    empty: Array.from({ length: 6 }, () => ({ e: "—", s: [], bus1: false, op: 0, d: "" })),
-  };
-
-  const st = {
-    reg: { R0: 0, R1: 0, R2: 0, R3: 0, TMP: 0, ACC: 0, MAR: 0 },
-    ram: new Uint8Array(256),
-    step: 0, cycles: 0, input: 0,
-    flags: { Cout: 0, Zero: 1, aLarger: 0, equal: 1 },
-    bus: 0, busSrc: [], lastS: [],
-    micro: clone(PRESETS.counter),
-    mode: "auto", running: false, timer: null, hz: 4,
-  };
-  function clone(x) { return JSON.parse(JSON.stringify(x)); }
-
-  // ---------- ALU ----------
-  function alu(a, b, op) {
-    let c = 0, cout = 0;
-    switch (op) {
-      case 0: { const s = a + b; c = s & 255; cout = s > 255 ? 1 : 0; break; }
-      case 1: c = a >> 1; cout = a & 1; break;
-      case 2: c = (a << 1) & 255; cout = (a >> 7) & 1; break;
-      case 3: c = (~a) & 255; break;
-      case 4: c = a & b; break;
-      case 5: c = a | b; break;
-      case 6: c = a ^ b; break;
-      case 7: c = 0; break; // CMP: só flags
-    }
-    return { c, cout, zero: c === 0 ? 1 : 0, aLarger: a > b ? 1 : 0, equal: a === b ? 1 : 0 };
-  }
-
-  // ---------- Núcleo: um pulso de clock (fase E, depois fase S) ----------
-  function readSource(src) {
-    if (src === "RAM") return st.ram[st.reg.MAR];
-    if (src === "IN") return st.input;
-    return st.reg[src];
-  }
-  function pulse(ctrl, label) {
-    const srcs = ctrl.e.filter(x => x && x !== "—");
-    let bus = 0;
-    srcs.forEach(s => { bus |= readSource(s); }); // conflito: OR dos valores, como fios em curto
-    st.bus = bus; st.busSrc = srcs;
-    const b = ctrl.bus1 ? 1 : st.reg.TMP;
-    const r = alu(bus, b, ctrl.op);
-    st.alu = { a: bus, b, op: ctrl.op, ...r, bus1: ctrl.bus1 };
-    // fase S
-    ctrl.s.forEach(t => {
-      if (t === "RAM") st.ram[st.reg.MAR] = bus;
-      else if (t === "ACC") { st.reg.ACC = r.c; st.flags = { Cout: r.cout, Zero: r.zero, aLarger: r.aLarger, equal: r.equal }; }
-      else st.reg[t] = bus;
-    });
-    st.lastS = ctrl.s.slice();
-    log(`${label}: E=${srcs.join("+") || "—"}  bus=${bus}  S=${ctrl.s.join(",") || "—"}${ctrl.s.includes("ACC") ? `  ALU ${OPS[ctrl.op]} → ${r.c}` : ""}`);
-  }
-
-  function autoTick() {
-    if (st.step === 6) { // T7: reset do stepper
-      st.step = 0; st.cycles++;
-      st.bus = 0; st.busSrc = []; st.lastS = [];
-      log(`T7: reset do stepper — ciclo ${st.cycles} completo`);
-      render(); return;
-    }
-    const m = st.micro[st.step];
-    pulse({ e: [m.e], s: m.s, bus1: m.bus1, op: m.op }, "T" + (st.step + 1));
-    st.step++;
-    render();
-  }
-
-  function reset() {
-    Object.keys(st.reg).forEach(k => st.reg[k] = 0);
-    st.ram.fill(0); st.step = 0; st.cycles = 0; st.bus = 0; st.busSrc = []; st.lastS = [];
-    st.flags = { Cout: 0, Zero: 1, aLarger: 0, equal: 1 }; st.alu = null;
-    logEl.innerHTML = ""; log("Reset");
-    render();
-  }
-
-  // ---------- UI ----------
+  const D = window.DigitalWeb;
+  D.loadLibrary(window.DIG_FILES);
   const $ = id => document.getElementById(id);
-  const logEl = $("log");
-  function log(t) {
-    const li = document.createElement("li"); li.textContent = t;
-    logEl.appendChild(li);
-    while (logEl.children.length > 60) logEl.removeChild(logEl.firstChild);
-  }
-  const hex = v => "0x" + v.toString(16).toUpperCase().padStart(2, "0");
-  const bin = v => v.toString(2).padStart(8, "0");
-  function leds(el, v) {
-    if (!el.children.length) for (let i = 0; i < 8; i++) { const d = document.createElement("span"); d.className = "led"; el.appendChild(d); }
-    for (let i = 0; i < 8; i++) el.children[i].classList.toggle("on", !!((v >> (7 - i)) & 1));
-    el.title = bin(v);
-  }
+  const MAIN = ["CounterProgram.dig", "COMPUTADORWITHOUTSTEPPER.dig"];
+  const fileSel = $("file");
+  const all = Object.keys(window.DIG_FILES).sort((a, b) => a.localeCompare(b));
+  fileSel.innerHTML = `<optgroup label="Computador">${MAIN.map(f => `<option value="${f}">${f.replace(".dig", "")}</option>`).join("")}</optgroup>` +
+    `<optgroup label="Componentes">${all.filter(f => !MAIN.includes(f)).map(f => `<option value="${f}">${f.replace(".dig", "")}</option>`).join("")}</optgroup>`;
 
-  // registradores
-  const regsEl = $("regs");
-  REGS.forEach(r => {
-    const s = document.createElement("section");
-    s.className = "mod span-3"; s.id = "mod-" + r.id;
-    s.innerHTML = `<div class="modhead"><h2>${r.id}</h2><span class="file">${r.file}</span></div>
-      <div class="val"><span class="dec"></span><span class="hex"></span></div>
-      <div class="leds"></div>
-      <div class="sig"><span class="chip e">E</span><span class="chip s">S</span></div>`;
-    regsEl.appendChild(s);
+  let sim, view, stack = [], timer = null, hz = 4, running = true, missing = [];
+
+  function load(file) {
+    closePop();
+    sim = new D.Sim(file);
+    missing = [...new Set(D.missingIn(file))];
+    stack = [sim.top];
+    if (!view) view = new D.View($("board"), sim, onElement); else view.sim = sim;
+    view.show(sim.top);
+    crumbs();
+    status();
+  }
+  function enter(inst) { stack.push(inst); view.show(inst); crumbs(); closePop(); }
+  function crumbs() {
+    const c = $("crumbs");
+    c.innerHTML = stack.map((inst, i) => {
+      const name = i === 0 ? inst.file.replace(".dig", "") : inst.label;
+      const cur = i === stack.length - 1 ? ' aria-current="page"' : "";
+      return (i ? "<span>›</span>" : "") + `<button data-i="${i}"${cur}>${name}</button>`;
+    }).join("") + `<span class="hint">Clique num bloco para abrir o circuito interno. Arraste para mover, role para zoom.</span>`;
+  }
+  $("crumbs").addEventListener("click", e => {
+    const b = e.target.closest("button[data-i]"); if (!b) return;
+    const i = +b.dataset.i; if (i === stack.length - 1) return;
+    stack = stack.slice(0, i + 1); view.show(stack[i]); crumbs(); closePop();
   });
 
-  // RAM
-  const ramEl = $("ram");
-  for (let i = 0; i < 256; i++) {
-    const c = document.createElement("div");
-    c.className = "ramcell"; c.tabIndex = 0; c.dataset.a = i;
-    c.title = "Endereço " + i;
-    ramEl.appendChild(c);
-  }
-  ramEl.addEventListener("click", e => {
-    const a = e.target.dataset.a; if (a === undefined) return;
-    $("ramAddr").value = a; $("ramVal").value = st.ram[a]; $("ramVal").focus();
-  });
-  ramEl.addEventListener("keydown", e => { if (e.key === "Enter") e.target.click(); });
-  $("ramWrite").onclick = () => {
-    const a = clamp($("ramAddr").value), v = clamp($("ramVal").value);
-    st.ram[a] = v; log(`RAM[${a}] ← ${v} (edição manual)`); render();
-  };
-  const clamp = v => Math.max(0, Math.min(255, parseInt(v, 10) || 0));
-
-  // stepper
-  const stepperEl = $("stepper");
-  for (let i = 1; i <= 7; i++) { const t = document.createElement("span"); t.className = "t"; t.textContent = "T" + i; stepperEl.appendChild(t); }
-
-  // tabela de microcódigo
-  const microEl = $("micro");
-  function buildMicro() {
-    let h = `<thead><tr><th>Passo</th><th>Enable (E)</th><th>Set (S)</th><th>Bus1</th><th>OP ALU</th><th>Descrição</th></tr></thead><tbody>`;
-    st.micro.forEach((m, i) => {
-      h += `<tr data-i="${i}"><td class="step">T${i + 1}</td>
-        <td><select data-k="e" aria-label="Enable T${i + 1}">${E_SOURCES.filter(x => x !== "IN").map(x => `<option${x === m.e ? " selected" : ""}>${x}</option>`).join("")}</select></td>
-        <td><div class="boxes">${S_TARGETS.map(t => `<label><input type="checkbox" data-k="s" value="${t}"${m.s.includes(t) ? " checked" : ""}>${t}</label>`).join("")}</div></td>
-        <td><input type="checkbox" data-k="bus1" aria-label="Bus1 T${i + 1}"${m.bus1 ? " checked" : ""}></td>
-        <td><select data-k="op" aria-label="OP T${i + 1}">${OPS.map((o, j) => `<option value="${j}"${j === m.op ? " selected" : ""}>${j.toString(2).padStart(3, "0")} ${o}</option>`).join("")}</select></td>
-        <td class="desc">${m.d || ""}</td></tr>`;
-    });
-    h += `<tr data-i="6"><td class="step">T7</td><td colspan="5" class="desc">Reinicia o stepper (volta para T1)</td></tr></tbody>`;
-    microEl.innerHTML = h;
-  }
-  microEl.addEventListener("change", e => {
-    const tr = e.target.closest("tr"); const i = +tr.dataset.i; const m = st.micro[i]; const k = e.target.dataset.k;
-    if (k === "e") m.e = e.target.value;
-    if (k === "op") m.op = +e.target.value;
-    if (k === "bus1") m.bus1 = e.target.checked;
-    if (k === "s") m.s = [...tr.querySelectorAll('input[data-k="s"]:checked')].map(x => x.value);
-    m.d = "editado";
-    tr.querySelector(".desc").textContent = "editado";
-  });
-  $("preset").onchange = e => { st.micro = clone(PRESETS[e.target.value]); buildMicro(); reset(); };
-
-  // manual
-  const manE = $("manE"), manS = $("manS");
-  E_SOURCES.slice(1).forEach(x => manE.insertAdjacentHTML("beforeend", `<label><input type="checkbox" value="${x}"> ${x}</label>`));
-  S_TARGETS.forEach(x => manS.insertAdjacentHTML("beforeend", `<label><input type="checkbox" value="${x}"> ${x}</label>`));
-  $("manOp").innerHTML = OPS.map((o, j) => `<option value="${j}">${j.toString(2).padStart(3, "0")} ${o}</option>`).join("");
-  const swEl = $("switches");
-  for (let i = 7; i >= 0; i--) {
-    const b = document.createElement("button"); b.className = "sw"; b.textContent = i; b.dataset.bit = i;
-    b.setAttribute("aria-label", "Bit " + i); b.setAttribute("aria-pressed", "false");
-    b.onclick = () => { st.input ^= (1 << i); render(); };
-    swEl.appendChild(b);
-  }
-  $("manPulse").onclick = () => {
-    pulse({
-      e: [...manE.querySelectorAll("input:checked")].map(x => x.value),
-      s: [...manS.querySelectorAll("input:checked")].map(x => x.value),
-      bus1: $("manBus1").checked, op: +$("manOp").value,
-    }, "Pulso");
-    render();
-  };
-  $("manReset").onclick = reset;
-  manE.addEventListener("change", previewManual);
-  function previewManual() {
-    const srcs = [...manE.querySelectorAll("input:checked")].map(x => x.value);
-    $("busWarn").hidden = srcs.length < 2;
-    $("busWarn").textContent = srcs.length > 1 ? `Conflito: ${srcs.join(" e ")} vão escrever no barramento ao mesmo tempo.` : "";
-  }
-
-  // controles auto
-  function setRunning(on) {
-    st.running = on; clearInterval(st.timer);
-    $("runBtn").textContent = on ? "❚❚ Pausar" : "▶ Rodar clock";
-    if (on) st.timer = setInterval(autoTick, 1000 / st.hz);
-  }
-  $("runBtn").onclick = () => setRunning(!st.running);
-  $("stepBtn").onclick = () => { setRunning(false); autoTick(); };
-  $("cycleBtn").onclick = () => { setRunning(false); do { autoTick(); } while (st.step !== 0); };
-  $("resetBtn").onclick = () => { setRunning(false); reset(); };
-  $("speed").oninput = e => { st.hz = +e.target.value; $("speedLbl").textContent = st.hz + " Hz"; if (st.running) setRunning(true); };
-
-  function setMode(m) {
-    st.mode = m; setRunning(false);
-    $("modeAuto").setAttribute("aria-pressed", m === "auto");
-    $("modeManual").setAttribute("aria-pressed", m === "manual");
-    $("autoControls").hidden = m !== "auto";
-    $("microMod").hidden = m !== "auto";
-    $("manualMod").hidden = m !== "manual";
-    reset();
-  }
-  $("modeAuto").onclick = () => setMode("auto");
-  $("modeManual").onclick = () => setMode("manual");
-
-  function render() {
-    // barramento
-    $("busDec").textContent = st.bus; $("busHex").textContent = hex(st.bus) + "  " + bin(st.bus);
-    leds($("busLeds"), st.bus);
-    $("busWire").classList.toggle("live", st.busSrc.length > 0);
-    $("busSrc").textContent = st.busSrc.length ? "E: " + st.busSrc.join(" + ") + (st.lastS.length ? "  →  S: " + st.lastS.join(", ") : "") : "ninguém no barramento";
-    if (st.mode === "auto") {
-      $("busWarn").hidden = true;
-    } else if (st.busSrc.length > 1) {
-      $("busWarn").hidden = false; $("busWarn").textContent = `Conflito no último pulso: ${st.busSrc.join(" e ")} escreveram juntos (valores misturados).`;
+  function compAt(inst, idx) { return sim.comps.find(c => c.inst === inst && c.idx === idx); }
+  function onElement(ev) {
+    const { inst, idx, el } = ev;
+    if (inst.children[idx]) { enter(inst.children[idx]); return; }
+    const comp = compAt(inst, idx);
+    if (!comp) return;
+    if (el.name === "Clock") { comp.value ^= 1; sim.poke(comp); refresh(); return; }
+    if (el.name === "In") {
+      const bits = el.attrs.Bits || 1;
+      if (bits === 1) { comp.value ^= 1; sim.poke(comp); refresh(); }
+      else openInPop(comp, bits, ev);
+      return;
     }
-    // registradores
-    REGS.forEach(r => {
-      const el = $("mod-" + r.id), v = st.reg[r.id];
-      el.querySelector(".dec").textContent = v;
-      el.querySelector(".hex").textContent = hex(v);
-      leds(el.querySelector(".leds"), v);
-      const e = st.busSrc.includes(r.id), s = st.lastS.includes(r.id);
-      el.querySelector(".chip.e").classList.toggle("on", e);
-      el.querySelector(".chip.s").classList.toggle("on", s);
-      el.classList.toggle("active", e && !s); el.classList.toggle("setting", s);
-    });
-    // ALU
-    const a = st.alu;
-    $("aluA").textContent = a ? `${a.a}  (${bin(a.a)})` : "—";
-    $("aluB").textContent = a ? `${a.b}  (${bin(a.b)})${a.bus1 ? "  ← Bus1" : "  ← TMP"}` : "—";
-    $("aluOp").textContent = a ? `${a.op.toString(2).padStart(3, "0")} ${OPS[a.op]}` : "—";
-    $("aluC").textContent = a ? `${a.c}  (${bin(a.c)})` : "—";
-    $("aluFlags").innerHTML = [["Cout", st.flags.Cout], ["Zero", st.flags.Zero], ["a larger", st.flags.aLarger], ["equal", st.flags.equal]]
-      .map(([k, v]) => `<span class="chip${v ? " on" : ""}">${k}</span>`).join("");
-    $("aluMod").classList.toggle("setting", st.lastS.includes("ACC"));
-    // RAM
-    const cells = ramEl.children;
-    for (let i = 0; i < 256; i++) {
-      const v = st.ram[i]; const c = cells[i];
-      const t = v.toString(16).toUpperCase().padStart(2, "0");
-      if (c.textContent !== t) c.textContent = t;
-      c.classList.toggle("nz", v !== 0);
-      c.classList.toggle("sel", i === st.reg.MAR);
-    }
-    $("ramMod").classList.toggle("active", st.busSrc.includes("RAM"));
-    $("ramMod").classList.toggle("setting", st.lastS.includes("RAM"));
-    // stepper
-    [...stepperEl.children].forEach((t, i) => t.classList.toggle("on", i === st.step));
-    $("cycles").textContent = "ciclos: " + st.cycles;
-    [...microEl.querySelectorAll("tbody tr")].forEach((tr, i) => tr.classList.toggle("cur", i === st.step));
-    // entrada
-    [...swEl.children].forEach(b => { const on = !!(st.input >> +b.dataset.bit & 1); b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
-    $("inVal").textContent = `${st.input} (${bin(st.input)})`;
+    if (el.name === "RAMDualPort") openRam(comp, ev);
   }
 
-  buildMicro();
-  log("Pronto. Aperte “Rodar clock” ou “Passo”.");
-  render();
+  // --- popovers
+  const pop = $("pop");
+  function place(ev) {
+    const r = $("stage").getBoundingClientRect();
+    pop.hidden = false;
+    const w = pop.offsetWidth, h = pop.offsetHeight;
+    pop.style.left = Math.max(10, Math.min(ev.clientX - r.left, r.width - w - 10)) + "px";
+    pop.style.top = Math.max(10, Math.min(ev.clientY - r.top + 10, r.height - h - 10)) + "px";
+  }
+  function closePop() { pop.hidden = true; pop.innerHTML = ""; }
+  function openInPop(comp, bits, ev) {
+    pop.innerHTML = `<h2>Entrada de ${bits} bits</h2>
+      <div class="row"><input type="number" id="inVal" min="0" max="${2 ** bits - 1}" value="${comp.value}">
+      <button id="inSet">Aplicar</button><button id="inClose">Fechar</button></div>`;
+    place(ev);
+    const apply = () => { comp.value = Math.max(0, Math.min(2 ** bits - 1, parseInt($("inVal").value, 10) || 0)); sim.poke(comp); refresh(); };
+    $("inSet").onclick = apply;
+    $("inVal").onkeydown = e => { if (e.key === "Enter") apply(); if (e.key === "Escape") closePop(); };
+    $("inClose").onclick = closePop;
+    $("inVal").focus(); $("inVal").select();
+  }
+  let ramComp = null;
+  function openRam(comp, ev) {
+    ramComp = comp;
+    let h = `<h2>RAM (valores em hexadecimal)</h2><div class="ramgrid"><span></span>`;
+    for (let c = 0; c < 16; c++) h += `<span class="ah" style="text-align:center">${c.toString(16).toUpperCase()}</span>`;
+    for (let r = 0; r < comp.mem.length / 16; r++) {
+      h += `<span class="ah">${(r * 16).toString(16).toUpperCase().padStart(2, "0")}</span>`;
+      for (let c = 0; c < 16; c++) { const a = r * 16 + c; h += `<input data-a="${a}" aria-label="Endereço ${a}" value="${comp.mem[a].toString(16).toUpperCase().padStart(2, "0")}">`; }
+    }
+    h += `</div><div class="row"><button id="ramClose">Fechar</button><span style="color:var(--muted);font-size:12px">Edite uma célula e tecle Enter.</span></div>`;
+    pop.innerHTML = h; place(ev);
+    pop.querySelector(".ramgrid").addEventListener("change", e => {
+      const a = +e.target.dataset.a; const v = parseInt(e.target.value, 16);
+      if (!isNaN(v)) { comp.mem[a] = v & 0xff; sim.queue.add(comp); sim.settle(); refresh(); }
+    });
+    $("ramClose").onclick = closePop;
+  }
+  function refreshRam() {
+    if (pop.hidden || !ramComp || !pop.querySelector(".ramgrid")) return;
+    pop.querySelectorAll(".ramgrid input").forEach(inp => {
+      if (document.activeElement === inp) return;
+      const a = +inp.dataset.a, t = ramComp.mem[a].toString(16).toUpperCase().padStart(2, "0");
+      if (inp.value !== t) inp.value = t;
+      inp.classList.toggle("cur", a === ramComp.addr());
+    });
+  }
+
+  // --- clock
+  function status() {
+    const s = $("status");
+    if (sim.oscillating) { s.textContent = "Oscilação detectada: o circuito não estabilizou."; s.classList.add("err"); return; }
+    s.classList.remove("err");
+    if (missing.length) { s.textContent = `Arquivo ausente no repositório: ${missing.join(", ")}`; s.classList.add("err"); return; }
+    const clk = sim.clocks[0];
+    s.textContent = sim.clocks.length ? `clock ${clk.value ? "1" : "0"} · ${running ? hz + " Hz" : "pausado"}` : "sem clock neste circuito";
+  }
+  function refresh() { view.update(); refreshRam(); status(); }
+  function setRun(on) {
+    running = on; clearInterval(timer);
+    $("run").classList.toggle("on", on);
+    $("run").textContent = on ? "❚❚ Pausar" : "▶ Rodar";
+    if (on) timer = setInterval(() => { sim.clockTick(); refresh(); }, 500 / hz);
+    status();
+  }
+  $("run").onclick = () => setRun(!running);
+  $("tick").onclick = () => { setRun(false); sim.clockTick(); refresh(); };
+  $("speed").oninput = e => { hz = +e.target.value; $("speedLbl").textContent = hz + " Hz"; if (running) setRun(true); };
+  $("reset").onclick = () => { const f = stack[0].file; load(f); };
+  $("fit").onclick = () => view.fit();
+  $("zin").onclick = () => { const r = $("board").getBoundingClientRect(); view.zoom(0.8, r.left + r.width / 2, r.top + r.height / 2); };
+  $("zout").onclick = () => { const r = $("board").getBoundingClientRect(); view.zoom(1.25, r.left + r.width / 2, r.top + r.height / 2); };
+  fileSel.onchange = () => { load(fileSel.value); try { history.replaceState(null, "", "#" + encodeURIComponent(fileSel.value.replace(".dig", ""))); } catch (e) {} };
+  window.addEventListener("hashchange", () => { const f = fromHash(); if (f) { fileSel.value = f; load(f); } });
+  window.addEventListener("resize", () => view && view.fit());
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closePop(); });
+
+  function fromHash() { const h = decodeURIComponent(location.hash.slice(1)); return h && window.DIG_FILES[h + ".dig"] ? h + ".dig" : null; }
+  const start = fromHash() || "CounterProgram.dig";
+  fileSel.value = start;
+  load(start);
+  setRun(true);
+  window.__app = { get sim() { return sim; }, get view() { return view; }, enter, stack: () => stack };
 })();
 </script>
 </body>

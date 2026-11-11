@@ -6,17 +6,28 @@ The main circuit, **`CounterProgram.dig`**, implements a hardware counter: a val
 
 ## Try it in the browser (no download)
 
-Open **[`index.html`](index.html)**: a JavaScript simulator of this computer that runs in any browser.
+Open **[`index.html`](index.html)**: it loads the real `.dig` files from this repository and draws and simulates them the way Digital does, gate by gate, in any browser.
 
 - **Live link:** `https://kaiq-byte.github.io/8-bit-Program-Counter/` (after enabling GitHub Pages, see below)
-- **Local:** just double-click `index.html`.
+- **Local:** double-click `index.html`.
+- **Direct link to a circuit:** add `#` and the file name, e.g. `index.html#ALU` or `index.html#Stepper%20count`.
 
-What it has:
-- **With stepper mode**: runs the counter program (RAM → R0 → ALU +1 → ACC → R0 → RAM) step by step (T1–T7), with adjustable clock speed. The microcode table is editable, so you can write your own programs. Presets: counter, doubler (SHL), and a counter that walks through RAM.
-- **Without stepper mode** (like `COMPUTADORWITHOUTSTEPPER.dig`): turn the Enable/Set signals, Bus1 and the ALU op on and off yourself, then fire a clock pulse. It warns you about bus conflicts.
-- LEDs for the bus and every register (R0–R3, TMP, ACC, MAR), an ALU panel with all 8 ops (ADD, SHR, SHL, NOT, AND, OR, XOR, CMP) and its flags (Cout, Zero, a larger, equal), and an editable 256-byte RAM.
+How to use it:
+- The clock starts running. **Pausar/Rodar** stops or starts it, **Pulso de clock** toggles it by hand, and the slider sets the speed.
+- **Click a block** (Register, ALU, Stepper count, MAR, ...) to open the circuit inside it with live values, the same way Digital opens a sub-circuit. The path at the top takes you back.
+- **Click an input** to toggle it (for multi-bit inputs, type a value). **Click the RAM** to see and edit its contents.
+- Wire colors follow Digital: light green = 1, dark green = 0, gray = high-Z, blue = multi-bit bus, red = short circuit.
+- Drag to pan, scroll or pinch to zoom.
 
-> The web version is a behavioral simulation of the same architecture: it models registers, bus, ALU and stepper, not each individual gate. For the gate-level circuit, use Digital as described below.
+How it works: `web/digital.js` re-implements the parts of Digital this project uses, taken from Digital's source code: the component shapes and pin positions, wiring rules, unit-delay simulation, zero-delay splitters, the start-up "noise" step that settles latches, the `Reset` element, and real-time clocks that each tick on their own timer (this circuit depends on that to make `clk d`). In `CounterProgram`, RAM[0] goes up by 1 on every 6-step stepper cycle.
+
+`web/circuits.js` holds a copy of the `.dig` files. After you change a circuit in Digital, regenerate it:
+
+```
+python3 tools/build_circuits.py
+```
+
+Known gap: `COMPUTADORWITHOUTSTEPPER.dig` uses `Ram.dig`, which is not in the repository, so that block shows up in red (Digital can't open it either).
 
 ### Publishing with GitHub Pages
 
