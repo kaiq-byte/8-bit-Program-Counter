@@ -4,7 +4,25 @@ An 8-bit SAP-1 style (Simple-As-Possible) computer, built entirely out of logic 
 
 The main circuit, **`CounterProgram.dig`**, implements a hardware counter: a value stored in RAM is read, incremented by `+1` through the ALU, and written back to memory, repeating this cycle on every clock pulse. It's the minimal demonstration of a full working datapath: **memory → ALU → memory**, driven by a sequencer.
 
-## How to open it
+## Try it in the browser (no download)
+
+Open **[`index.html`](index.html)**: a JavaScript simulator of this computer that runs in any browser.
+
+- **Live link:** `https://kaiq-byte.github.io/8-bit-Program-Counter/` (after enabling GitHub Pages, see below)
+- **Local:** just double-click `index.html`.
+
+What it has:
+- **With stepper mode**: runs the counter program (RAM → R0 → ALU +1 → ACC → R0 → RAM) step by step (T1–T7), with adjustable clock speed. The microcode table is editable, so you can write your own programs. Presets: counter, doubler (SHL), and a counter that walks through RAM.
+- **Without stepper mode** (like `COMPUTADORWITHOUTSTEPPER.dig`): turn the Enable/Set signals, Bus1 and the ALU op on and off yourself, then fire a clock pulse. It warns you about bus conflicts.
+- LEDs for the bus and every register (R0–R3, TMP, ACC, MAR), an ALU panel with all 8 ops (ADD, SHR, SHL, NOT, AND, OR, XOR, CMP) and its flags (Cout, Zero, a larger, equal), and an editable 256-byte RAM.
+
+> The web version is a behavioral simulation of the same architecture: it models registers, bus, ALU and stepper, not each individual gate. For the gate-level circuit, use Digital as described below.
+
+### Publishing with GitHub Pages
+
+The workflow `.github/workflows/pages.yml` publishes the site on every push to `main`. One-time setup: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+
+## How to open it in Digital
 
 1. Download and install [Digital](https://github.com/hneemann/Digital/releases) (just the `.jar`, requires Java).
 2. Open `circuits/CounterProgram.dig`.
